@@ -55,10 +55,10 @@ object project extends ScalaModule with DockerJibModule {
       * @return
       *   The return value is used for further processing of the JibContainerBuilder - so full replacement is possible.
       */
-    override def jibBuilder: Task[JibContainerBuilder] = Task.Anon {
+    override def getJibContainerBuilder: Task[JibContainerBuilder] = Task.Anon {
 
       //this takes the default JavaContainerBuilder
-      val emptyJibBuilder = super.getJibContainerBuilder()
+      val emptyJibContainerBuilder = super.getJibContainerBuilder()
 
       //we are adding the Azure agent to the container as a seperate layer with some custom permissions
       import com.google.cloud.tools.jib.api.buildplan._
@@ -72,8 +72,8 @@ object project extends ScalaModule with DockerJibModule {
         .builder()
         .addEntry(sourcefile, pathInContainer, permissions, modificationTime, ownership)
         .build()
-      emptyJibBuilder.addFileEntriesLayer(layer)
-      emptyJibBuilder
+      emptyJibContainerBuilder.addFileEntriesLayer(layer)
+      emptyJibContainerBuilder
     }
   
 

@@ -160,17 +160,17 @@ trait DockerJibModule extends Module { outer: JavaModule =>
       * @return
       *   The return value is used for further processing of the JavaContainerBuilder - so full replacement is possible.
       */
-    def getJavaBuilder: Task[JavaContainerBuilder] = Task.Anon {
+    def getJavaContainerBuilder: Task[JavaContainerBuilder] = Task.Anon {
       val logger     = T.ctx().log
       val dockerConf = dockerContainerConfig()
       val buildConf  = buildSettings()
 
-      val javaBuilder = MDBuild.javaBuild(
+      val javaContainerBuilder = MDBuild.javaBuild(
         buildSettings = buildConf,
         dockerSettings = dockerConf,
         logger = logger,
       )
-      javaBuilder
+      javaContainerBuilder
     }
 
     /** The JibContainerBuilder before it is used to build the container. An "empty" JibContainerBuilder is passed to
@@ -180,17 +180,17 @@ trait DockerJibModule extends Module { outer: JavaModule =>
       * @return
       *   The return value is used for further processing of the JibContainerBuilder - so full replacement is possible.
       */
-    def getJibBuilder: Task[JibContainerBuilder] = Task.Anon {
-      val javaBuilder = getJavaBuilder()
-      val jibBuilder  = javaBuilder.toContainerBuilder()
+    def getJibContainerBuilder: Task[JibContainerBuilder] = Task.Anon {
+      val javaContainerBuilder = getJavaContainerBuilder()
+      val jibContainerBuilder  = javaContainerBuilder.toContainerBuilder()
       val buildConf   = buildSettings()
       val logger      = T.ctx().log
 
-      val (emptyJibBuilder, jiblayers, entrypoints) = MDBuild.customizeLayers(jibBuilder, buildConf, logger)
+      val (emptyJibContainerBuilder, jiblayers, entrypoints) = MDBuild.customizeLayers(jibContainerBuilder, buildConf, logger)
 
-      jiblayers.map(emptyJibBuilder.addFileEntriesLayer)
-      emptyJibBuilder.setEntrypoint(entrypoints.asJava)
-      emptyJibBuilder
+      jiblayers.map(emptyJibContainerBuilder.addFileEntriesLayer)
+      emptyJibContainerBuilder.setEntrypoint(entrypoints.asJava)
+      emptyJibContainerBuilder
     }
 
     def buildImage: T[BuildResult] = T {
@@ -199,8 +199,8 @@ trait DockerJibModule extends Module { outer: JavaModule =>
       val dockerConf = dockerContainerConfig()
       val buildConf  = buildSettings()
 
-      val jibBuilder = getJibBuilder()
-      MDBuild.setContainerParams(dockerConf, buildConf, logger, jibBuilder)
+      val jibContainerBuilder = getJibContainerBuilder()
+      MDBuild.setContainerParams(dockerConf, buildConf, logger, jibContainerBuilder)
 
       val containerizer = buildConf.targetImage match {
         case md.JibImage.DockerDaemonImage(qualifiedName, _, _) =>
@@ -225,7 +225,7 @@ trait DockerJibModule extends Module { outer: JavaModule =>
         .setToolName(MDShared.toolName)
       // TODO: check how we could combine jib and mill caching
 
-      val container = jibBuilder.containerize(containerizerWithToolSet)
+      val container = jibContainerBuilder.containerize(containerizerWithToolSet)
 
       BuildResult(
         image = container.getTargetImage.toString(),
