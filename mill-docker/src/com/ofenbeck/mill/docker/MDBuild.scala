@@ -1,28 +1,9 @@
 package com.ofenbeck.mill.docker
 
-import com.google.cloud.tools.jib.api.Containerizer
-import com.google.cloud.tools.jib.api.ImageReference
-import com.google.cloud.tools.jib.api.JavaContainerBuilder
-import com.google.cloud.tools.jib.api.Jib
-import com.google.cloud.tools.jib.api.JibContainerBuilder
-import com.google.cloud.tools.jib.api.LogEvent
-import coursier.core.shaded.sourcecode.File
-import mill.scalalib.JavaModule
-import os.group.set
+import com.google.cloud.tools.jib.api._
+import com.google.cloud.tools.jib.api.buildplan.{FileEntriesLayer, ImageFormat, LayerObject, Port}
 
-import java.time.Instant
 import scala.jdk.CollectionConverters._
-import com.google.cloud.tools.jib.api.buildplan.FileEntriesLayer
-import com.google.cloud.tools.jib.api.RegistryImage
-import com.google.cloud.tools.jib.api.DockerDaemonImage
-import com.google.cloud.tools.jib.api.TarImage
-import com.google.cloud.tools.jib.api.buildplan.ImageFormat
-import com.google.cloud.tools.jib.api.buildplan.Port
-import com.google.cloud.tools.jib.api.MainClassFinder
-import com.google.cloud.tools.jib.api.buildplan.LayerObject
-import com.google.cloud.tools.jib.api.buildplan.FileEntry
-import mill.define.Command
-import mill._, define.Task
 
 object MDBuild {
 
@@ -31,7 +12,6 @@ object MDBuild {
       buildSettings: BuildSettings,
       logger: mill.api.Logger,
   ): JavaContainerBuilder = {
-    // JibContainerBuilder = {
 
     val javaBuilder = buildSettings.sourceImage match {
       case JibImage.RegistryImage(qualifiedName, credentialsEnvironment) =>
@@ -42,7 +22,7 @@ object MDBuild {
           case None =>
         }
         JavaContainerBuilder.from(image)
-      case JibImage.DockerDaemonImage(qualifiedName, useFallBack, fallBackEnvCredentials) =>
+      case JibImage.DockerDaemonImage(qualifiedName, _, _) =>
         JavaContainerBuilder.from(DockerDaemonImage.named(ImageReference.parse(qualifiedName)))
       case JibImage.SourceTarFile(path) =>
         JavaContainerBuilder.from(TarImage.at(path.path.wrapped))
@@ -147,7 +127,6 @@ object MDBuild {
   def setContainerParams(
       dockerSettings: DockerSettings,
       buildSettings: BuildSettings,
-      logger: mill.api.Logger,
       containerBuilder: JibContainerBuilder,
   ): JibContainerBuilder = {
 
@@ -166,13 +145,12 @@ object MDBuild {
       case JibImageFormat.Docker => ImageFormat.Docker
       case JibImageFormat.OCI    => ImageFormat.OCI
     })
-    import com.google.cloud.tools.jib.api.buildplan.Port.tcp
-    import com.google.cloud.tools.jib.api.buildplan.Port.udp
+    import com.google.cloud.tools.jib.api.buildplan.Port.{tcp, udp}
     val ports: Set[Port] =
       dockerSettings.exposedPorts.map(p => tcp(p)).toSet ++ dockerSettings.exposedUdpPorts.map(p => udp(p)).toSet
     containerBuilder.setExposedPorts(ports.asJava)
     containerBuilder.setCreationTime(MDShared.useCurrentTimestamp(buildSettings.useCurrentTimestamp))
-    dockerSettings.entrypoint.foreach(entrypoint => containerBuilder.setEntrypoint(dockerSettings.entrypoint.asJava))
+    containerBuilder.setEntrypoint(dockerSettings.entrypoint.asJava)
     containerBuilder
   }
 

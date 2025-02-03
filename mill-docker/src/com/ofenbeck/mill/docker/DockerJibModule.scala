@@ -1,33 +1,13 @@
 package com.ofenbeck.mill.docker
 
-import mill.scalalib.JavaModule
-import os.Shellable.IterableShellable
 import com.google.cloud.tools._
-
-import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.{Files, Path}
-import java.time.Instant
-import java.util.Optional
-import java.util.function._
-import scala.jdk.CollectionConverters._
-import scala.jdk.OptionConverters.RichOption
-import scala.language.postfixOps
+import com.google.cloud.tools.jib.api._
+import com.ofenbeck.mill.{docker => md}
+import mill._
+import mill.scalalib.JavaModule
 
 import scala.collection.immutable._
-
-import mill._
-import mill.scalalib.ScalaModule
-import mill.api.Ctx
-
-import com.ofenbeck.mill.{docker => md}
-import com.google.cloud.tools.jib.api.JibContainerBuilder
-import com.google.cloud.tools.jib.api.buildplan.FileEntriesLayer
-import com.google.cloud.tools.jib.api.JavaContainerBuilder
-import com.google.cloud.tools.jib.api.Containerizer
-import com.google.cloud.tools.jib.api.DockerDaemonImage
-import com.google.cloud.tools.jib.api.TarImage
-import com.google.cloud.tools.jib.api.RegistryImage
-import com.google.cloud.tools.jib.api.Jib
+import scala.language.postfixOps
 
 trait DockerJibModule extends Module { outer: JavaModule =>
 
@@ -94,7 +74,7 @@ trait DockerJibModule extends Module { outer: JavaModule =>
 
     /** The entrypoint for the container. This is the command that will be run when the container starts. If none is
       * provided the jib default is used. ENTRYPOINT ["java", jib.container.jvmFlags, "-cp",
-      * "/app/resources:/app/classes:/app/libs/", jib.container.mainClass] CMD [jib.container.args])
+      * "/app/resources:/app/classes:/app/libs/", jib.container.mainClass] CMD [jib.container.args]
       */
 
     def entrypoint: T[Seq[String]] = Seq.empty[String]
@@ -174,7 +154,7 @@ trait DockerJibModule extends Module { outer: JavaModule =>
     }
 
     /** The JibContainerBuilder before it is used to build the container. An "empty" JibContainerBuilder is passed to
-      * the hook (from the configured SoureImage). In addition the FileEntriesLayer and the entrypoints of a default
+      * the hook (from the configured SoureImage). In addition, the FileEntriesLayer and the entrypoints of a default
       * JavaBuild are passed to the hook. You have to add both again to the "empty" JibContainerBuilder to get the same
       * behavior as the default JavaBuild.
       * @return
@@ -182,25 +162,21 @@ trait DockerJibModule extends Module { outer: JavaModule =>
       */
     def getJibContainerBuilder: Task[JibContainerBuilder] = Task.Anon {
       val javaContainerBuilder = getJavaContainerBuilder()
-      val jibContainerBuilder  = javaContainerBuilder.toContainerBuilder()
-      val buildConf   = buildSettings()
-      val logger      = T.ctx().log
 
-      val (emptyJibContainerBuilder, jiblayers, entrypoints) = MDBuild.customizeLayers(jibContainerBuilder, buildConf, logger)
+      val dockerConf = dockerContainerConfig()
+      val buildConf  = buildSettings()
 
-      jiblayers.map(emptyJibContainerBuilder.addFileEntriesLayer)
-      emptyJibContainerBuilder.setEntrypoint(entrypoints.asJava)
-      emptyJibContainerBuilder
+      val jibContainerBuilder = javaContainerBuilder.toContainerBuilder()
+      MDBuild.setContainerParams(dockerConf, buildConf, jibContainerBuilder)
+      jibContainerBuilder
     }
 
     def buildImage: T[BuildResult] = T {
       val logger = T.ctx().log
       logger.info("Building image")
-      val dockerConf = dockerContainerConfig()
-      val buildConf  = buildSettings()
+      val buildConf = buildSettings()
 
       val jibContainerBuilder = getJibContainerBuilder()
-      MDBuild.setContainerParams(dockerConf, buildConf, logger, jibContainerBuilder)
 
       val containerizer = buildConf.targetImage match {
         case md.JibImage.DockerDaemonImage(qualifiedName, _, _) =>
