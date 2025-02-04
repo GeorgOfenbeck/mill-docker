@@ -56,24 +56,15 @@ image::images//libro_finito.gif[https://github.com/LaurenceWarne/libro-finito, 8
 
 == Plugin Design 
 
-The plugin task graph looks like this:
-
-image::images/buildImage.svg[Setting Tasks for buildImage, 800, 400]
-
-The leaf nodes are the settings that can be modified by the user and are described here in detail:  xref:#plugin-configuration[Plugin Configuration].
-The BuildSettings tasks pulls the output of the JavaBuild Module to then create the appropriate layers.
-The various input tasks can be seen in the following graph:
-
-image::images/buildSettings.svg[Input Tasks used for Layer generation, 1200, 700]
-
-
 In terms of execution the next graph shows the high level flow of the plugin
 The source Image is pulled and used as Base Layer. 
 The artifacts from various JavaModule tasks are used to fill the other layers. 
 The layers are used as input for a link:http://www.javadoc.io/page/com.google.cloud.tools/jib-core/latest/com/google/cloud/tools/jib/api/JavaContainerBuilder.html[Java Container Builder].
 
-The optional user provided javaContainerBuilderHook can be used to customize the link:http://www.javadoc.io/page/com.google.cloud.tools/jib-core/latest/com/google/cloud/tools/jib/api/JibContainerBuilder.html[Jib Container Builder].
-For even more customization the user can provide a custom JibContainerBuilder which allows to freely modify/discard and add layers to the default layers created in the previous steps.
+The user can override the two methods getJavaBuilder, getJibBuilder to customize the behaviour as much as needed.
+(Marked in the graph as hooks - but in the current version of the code they are simple overrides as shown in the examples)
+The first one in ideal if the default Jib Java Container Builder is sufficient and only minor modifications are needed.
+The second one is more powerful as it allows to fully replace the default Jib Java Container Builder with a custom one.
 
 Finally the container is built using the user provided container parameters and pushed to the according target image format (Container Registry, Docker Daemon, Tarball).
 
@@ -151,15 +142,14 @@ image::images/plugin_flow.svg[Plugin Flow,800, 400]
 |Seq[String]
 |Program arguments for the container.
 |
-
-|jibContainerBuilderHook
-|Task[(JibContainerBuilder, Vector[FileEntriesLayer], Vector[String])] => Task[JibContainerBuilder]
-|Hook to modify the JibContainerBuilder before building the container. See the example link:mill-docker/test/resources/examples-customjibbuild[here].
+|getJibBuilder
+|Task[JibContainerBuilder] 
+|Method to override to get/modify the JibContainerBuilder before building the container. See the example link:mill-docker/test/resources/examples-customjibbuild[here].
 |
 
-|javaContainerBuilderHook
-|Task[JavaContainerBuilder] => Task[JavaContainerBuilder]
-|Hook to modify the JavaContainerBuilder before building the container. See the example link:mill-docker/test/resources/examples-jvmagent[here].
+|getJavaBuilder
+|Task[JavaContainerBuilder] 
+|Method to override to get/modify the JavaContainerBuilder before building the container. See the example link:mill-docker/test/resources/examples-jvmagent[here].
 |
 |===
 
@@ -187,6 +177,9 @@ An example modifying the Java Container Builder link:mill-docker/test/resources/
 
 An example modifying the Jib Container Builder link:mill-docker/test/resources/examples-customjibbuild[here]
 
+=== Jib Custom Layer Example (dropping a default layer)
+
+An example modifying the Jib Container Builder link:mill-docker/test/resources/examples-customlayerbuild[here]
 
 == Future Work
 

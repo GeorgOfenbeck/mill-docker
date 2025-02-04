@@ -5,7 +5,7 @@ import utest._
 object CustomJavaBuildExample extends TestSuite {
 
   def tests: Tests = Tests {
-    test("image types") {
+    test("custom java build") {
       val resourceFolder = os.Path(sys.env("MILL_TEST_RESOURCE_DIR"))
 
       ExampleTester.run(

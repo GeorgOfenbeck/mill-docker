@@ -7,7 +7,7 @@ import com.google.cloud.tools.jib.api.JibEvent
 
 
 object MDLogging {
-//
+  
   def getEventLogger(log: mill.api.Logger): java.util.function.Consumer[LogEvent] = {
     val loggerJava = new java.util.function.Consumer[LogEvent] {
       def accept(e: LogEvent): Unit =

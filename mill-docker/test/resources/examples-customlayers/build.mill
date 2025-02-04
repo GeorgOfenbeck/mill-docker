@@ -16,7 +16,7 @@ import com.ofenbeck.mill.docker._
 /** Usage
 
 > ./mill project.docker.buildImage
-...Loaded image: ofenbeck/customjibbuild:local...
+...Loaded image: ofenbeck/customlayerbuild:local...
 ...
 
 */
@@ -33,7 +33,7 @@ object project extends ScalaModule with DockerJibModule {
     override def sourceImage = JibImage.RegistryImage("eclipse-temurin:21")
 
     override def targetImage =
-      JibImage.DockerDaemonImage("ofenbeck/customjibbuild:local")
+      JibImage.DockerDaemonImage("ofenbeck/customlayerbuild:local")
 
     def downloadAzureAgent: T[PathRef] = T {
       val azureAgentUrl =
@@ -55,24 +55,29 @@ object project extends ScalaModule with DockerJibModule {
       * @return
       *   The return value is used for further processing of the JibContainerBuilder - so full replacement is possible.
       */
+
+    /** We overload the getJibBuilder method to customize the layers of the container
+      * In the CustomJibBuild example found at (../examples/examples-customjibbuild)
+      * we are simply reusing the default layers and entrypoints by calling super.getJibBuilder()
+      * 
+      * Here we are customizing the layers by dropping the dependencies layer and hence fully overload the super method
+      * without calling it 
+      */
     override def getJibBuilder: Task[JibContainerBuilder] = Task.Anon {
+
       //this takes the default JavaContainerBuilder
-      val emptyJibBuilder = super.getJibBuilder()
+      val javaBuilder = getJavaBuilder()
+      val jibBuilder  = javaBuilder.toContainerBuilder()
+      val buildConf   = buildSettings()
+      val logger      = T.ctx().log
 
-      //we are adding the Azure agent to the container as a seperate layer with some custom permissions
-      import com.google.cloud.tools.jib.api.buildplan._
-      val sourcefile: Path                  = downloadAzureAgent().path.wrapped
-      val pathInContainer: AbsoluteUnixPath = AbsoluteUnixPath.get("/agents/azure.jar")
-      val permissions: FilePermissions      = FilePermissions.fromOctalString("700")
-      val modificationTime: Instant         = Instant.EPOCH
-      val ownership: String                 = "root:root"
-
-      val layer = FileEntriesLayer
-        .builder()
-        .addEntry(sourcefile, pathInContainer, permissions, modificationTime, ownership)
-        .build()
-      emptyJibBuilder.addFileEntriesLayer(layer)
-      emptyJibBuilder
+      val (emptyJibBuilder, jiblayers, entrypoints) = MDBuild.customizeLayers(jibBuilder, buildConf, logger)
+      
+      //This is the difference to the default (super) version - we actually drop one of the layers 
+      jiblayers.filter(_.getName() != "dependencies").map(emptyJibBuilder.addFileEntriesLayer)
+      
+      
+      emptyJibBuilder.setEntrypoint(entrypoints.asJava)
     }
   
 

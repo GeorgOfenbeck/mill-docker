@@ -136,39 +136,40 @@ trait DockerJibModule extends Module { outer: JavaModule =>
       implicit def jsonCodec: upickle.default.ReadWriter[BuildResult] = upickle.default.macroRW
     }
 
-    /** The JavaContainerBuilder before it is used to build the container.
+    /** The JavaContainerBuilder before it is used to build the container. This will setup the JavaContainer in default
+      * Jib Java Layer format
       * @return
       *   The return value is used for further processing of the JavaContainerBuilder - so full replacement is possible.
       */
-    def getJavaContainerBuilder: Task[JavaContainerBuilder] = Task.Anon {
+    def getJavaBuilder: Task[JavaContainerBuilder] = Task.Anon {
       val logger     = T.ctx().log
       val dockerConf = dockerContainerConfig()
       val buildConf  = buildSettings()
 
-      val javaContainerBuilder = MDBuild.javaBuild(
+      val javaBuilder = MDBuild.javaBuild(
         buildSettings = buildConf,
         dockerSettings = dockerConf,
         logger = logger,
       )
-      javaContainerBuilder
+      javaBuilder
     }
 
-    /** The JibContainerBuilder before it is used to build the container. An "empty" JibContainerBuilder is passed to
-      * the hook (from the configured SoureImage). In addition, the FileEntriesLayer and the entrypoints of a default
-      * JavaBuild are passed to the hook. You have to add both again to the "empty" JibContainerBuilder to get the same
-      * behavior as the default JavaBuild.
+    /** This method mainly exists to allow for customization of the JibContainerBuilder. It first creates a
+      * JavaContainerBuilder via the Java Builder and then converts it to a JibContainerBuilder.
+      *
+      * By default it will just readd the same layers - but by overriding as seen in the example this can be customized.
+      *
       * @return
       *   The return value is used for further processing of the JibContainerBuilder - so full replacement is possible.
       */
-    def getJibContainerBuilder: Task[JibContainerBuilder] = Task.Anon {
-      val javaContainerBuilder = getJavaContainerBuilder()
-
+    def getJibBuilder: Task[JibContainerBuilder] = Task.Anon {
+      val javaBuilder = getJavaBuilder()
       val dockerConf = dockerContainerConfig()
-      val buildConf  = buildSettings()
+      val buildConf   = buildSettings()
 
-      val jibContainerBuilder = javaContainerBuilder.toContainerBuilder()
-      MDBuild.setContainerParams(dockerConf, buildConf, jibContainerBuilder)
-      jibContainerBuilder
+      val jibBuilder = javaBuilder.toContainerBuilder()
+      MDBuild.setContainerParams(dockerConf, buildConf, jibBuilder)
+      jibBuilder
     }
 
     def buildImage: T[BuildResult] = T {
@@ -176,7 +177,7 @@ trait DockerJibModule extends Module { outer: JavaModule =>
       logger.info("Building image")
       val buildConf = buildSettings()
 
-      val jibContainerBuilder = getJibContainerBuilder()
+      val jibBuilder = getJibBuilder()
 
       val containerizer = buildConf.targetImage match {
         case md.JibImage.DockerDaemonImage(qualifiedName, _, _) =>
@@ -201,7 +202,7 @@ trait DockerJibModule extends Module { outer: JavaModule =>
         .setToolName(MDShared.toolName)
       // TODO: check how we could combine jib and mill caching
 
-      val container = jibContainerBuilder.containerize(containerizerWithToolSet)
+      val container = jibBuilder.containerize(containerizerWithToolSet)
 
       BuildResult(
         image = container.getTargetImage.toString(),

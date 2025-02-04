@@ -1,5 +1,5 @@
 import java.nio.file.Path
-import $ivy.`com.ofenbeck::mill-docker_mill0.11:0.0.1`
+import $ivy.`com.ofenbeck::mill-docker_mill0.11:0.0.2`
 import mill._
 import mill.scalalib._
 import os._
@@ -41,9 +41,9 @@ object project extends ScalaModule with DockerJibModule {
       PathRef(taskDownloadDir)
     }
 
-    override def getJavaContainerBuilder: Task[JavaContainerBuilder] = Task.Anon {
+     override def getJavaBuilder: Task[JavaContainerBuilder] = Task.Anon {
         T.ctx().log.info("Added Azure agent to the container")
-        val builder = super.getJavaContainerBuilder()
+        val builder = super.getJavaBuilder()
         builder.addResources(downloadAzureAgent().path.wrapped)
         builder
     }

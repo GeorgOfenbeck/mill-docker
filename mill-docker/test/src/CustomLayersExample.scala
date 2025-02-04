@@ -2,15 +2,15 @@ package com.ofenbeck.mill.docker
 import mill.testkit.ExampleTester
 import utest._
 
-object CustomJibBuildExample extends TestSuite {
+object CustomLayersExample extends TestSuite {
 
   def tests: Tests = Tests {
-    test("custom jib build") {
+    test("customizing layers") {
       val resourceFolder = os.Path(sys.env("MILL_TEST_RESOURCE_DIR"))
 
       ExampleTester.run(
         clientServerMode = true,
-        workspaceSourcePath = resourceFolder / "examples-customjibbuild",
+        workspaceSourcePath = resourceFolder / "examples-customlayers",
         millExecutable = os.Path(sys.env("MILL_EXECUTABLE_PATH"))
       )
     }
