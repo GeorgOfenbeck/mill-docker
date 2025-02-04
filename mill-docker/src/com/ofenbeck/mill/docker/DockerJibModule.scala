@@ -136,7 +136,7 @@ trait DockerJibModule extends Module { outer: JavaModule =>
       implicit def jsonCodec: upickle.default.ReadWriter[BuildResult] = upickle.default.macroRW
     }
 
-    /** The JavaContainerBuilder before it is used to build the container. This will setup the JavaContainer in default
+    /** The JavaContainerBuilder before it is used to build the container. This will set up the JavaContainer in default
       * Jib Java Layer format
       * @return
       *   The return value is used for further processing of the JavaContainerBuilder - so full replacement is possible.
@@ -157,7 +157,7 @@ trait DockerJibModule extends Module { outer: JavaModule =>
     /** This method mainly exists to allow for customization of the JibContainerBuilder. It first creates a
       * JavaContainerBuilder via the Java Builder and then converts it to a JibContainerBuilder.
       *
-      * By default it will just readd the same layers - but by overriding as seen in the example this can be customized.
+      * By default, it will just readd the same layers - but by overriding as seen in the example this can be customized.
       *
       * @return
       *   The return value is used for further processing of the JibContainerBuilder - so full replacement is possible.
