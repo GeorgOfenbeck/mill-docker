@@ -16,6 +16,7 @@ object MDShared {
     if (useCurrentTimestamp) Instant.now() else Instant.EPOCH
 
   def isSnapshotDependency(millpath: mill.PathRef) = millpath.path.last.endsWith("-SNAPSHOT.jar")
+  def isModuleDep(millpath: mill.PathRef) = millpath.path.last.endsWith("classes")
 
   def retrieveEnvCredentials(usernameEnv: String, passwordEnv: String): CredentialRetriever =
     new CredentialRetriever {
