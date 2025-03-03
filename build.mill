@@ -17,7 +17,7 @@ import mill._, scalalib._, publish._
 
 object versions {
   val millVersions = Seq("0.12.0", "0.12.1", "0.12.2")
-  val jibCore      = "0.27.1"
+  val jibCore      = "0.27.2"
 }
 
 object `mill-docker` extends Cross[MillDockerCross](versions.millVersions) {}
