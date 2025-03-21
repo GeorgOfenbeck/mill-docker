@@ -9,6 +9,9 @@ import mill.scalalib.JavaModule
 import scala.collection.immutable._
 import scala.language.postfixOps
 
+import java.util.Optional
+import scala.jdk.OptionConverters.RichOption
+
 trait DockerJibModule extends Module { outer: JavaModule =>
 
   trait DockerConfig extends mill.Module {
@@ -172,6 +175,14 @@ trait DockerJibModule extends Module { outer: JavaModule =>
       jibBuilder
     }
 
+    def dockerUsernameEnvInput = Task.Input {
+      Task.env.get("DOCKER_USERNAME")
+    }
+
+    def dockerPasswordEnvInput = Task.Input {
+      Task.env.get("DOCKER_PASSWORD")
+    }
+
     def buildImage: T[BuildResult] = T {
       val logger = T.ctx().log
       logger.info("Building image")
@@ -185,7 +196,18 @@ trait DockerJibModule extends Module { outer: JavaModule =>
         case md.JibImage.RegistryImage(qualifiedName, credentialsEnvironment) =>
           val image = RegistryImage.named(jib.api.ImageReference.parse(qualifiedName))
           credentialsEnvironment.foreach { case (username, password) =>
-            image.addCredentialRetriever(MDShared.retrieveEnvCredentials(username, password))
+            image.addCredentialRetriever(
+              new CredentialRetriever {
+                def retrieve(): Optional[Credential] = {
+                  val option = for {
+                    username <- dockerUsernameEnvInput()
+                    password <- dockerPasswordEnvInput()
+                  } yield Credential.from(username, password)
+                  
+                  option.asJava
+                }
+              }
+            )
           }
           Containerizer.to(image)
         case md.JibImage.TargetTarFile(qualifiedName, filename) =>
