@@ -54,7 +54,7 @@ object `mill-docker` extends ScalaModule with PublishModule {
   // Set the `platformSuffix` so the name indicates what Mill version it is compiled for
   def platformSuffix = "_mill" + mill.main.BuildInfo.millBinPlatform
 
-  override def publishVersion: T[String] = "0.0.2"
+  override def publishVersion: T[String] = "0.0.3"
 
   override def ivyDeps = super.ivyDeps() ++ Agg(
     ivy"com.lihaoyi:mill-dist:$millVersion",

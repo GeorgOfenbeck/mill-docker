@@ -32,8 +32,12 @@ object MDBuild {
     val (upstreamClassSnapShot, upstreamClass) =
       buildSettings.upstreamAssemblyClasspath.partition(MDShared.isSnapshotDependency(_))
 
-    javaBuilder.addDependencies(upstreamClass.filter(x => os.exists(x.path)).map(x => x.path.wrapped).toList.asJava)
+    val (moduleDeps, libraryDeps) =
+      upstreamClass.partition(MDShared.isModuleDep(_))
+
+    javaBuilder.addDependencies(libraryDeps.filter(x => os.exists(x.path)).map(x => x.path.wrapped).toList.asJava)
     javaBuilder.addSnapshotDependencies(upstreamClassSnapShot.map(_.path.wrapped).toList.asJava)
+    javaBuilder.addToClasspath(moduleDeps.filter(x => os.isDir(path)).map(_.path.wrapped).toList.asJava)
 
     buildSettings.unmanagedDependencies
       .filter(p => os.exists(p.path))
