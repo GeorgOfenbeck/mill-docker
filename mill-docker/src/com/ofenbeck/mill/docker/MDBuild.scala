@@ -29,38 +29,17 @@ object MDBuild {
     }
 
     // Create all the layers for the container
-    val (upstreamClassSnapShot, upstreamClass) =
-      buildSettings.upstreamAssemblyClasspath.partition(MDShared.isSnapshotDependency(_))
-
-    javaBuilder.addDependencies(upstreamClass.filter(x => os.exists(x.path)).map(x => x.path.wrapped).toList.asJava)
-    javaBuilder.addSnapshotDependencies(upstreamClassSnapShot.map(_.path.wrapped).toList.asJava)
-
-    buildSettings.unmanagedDependencies
-      .filter(p => os.exists(p.path))
-      .map(_.path)
-      .foreach { path =>
-        if (os.isDir(path))
-          os.walk(path).filter(file => file.toIO.isFile()).map(x => javaBuilder.addSnapshotDependencies(x.wrapped))
-        if (os.isFile(path))
-          javaBuilder.addSnapshotDependencies(path.wrapped)
-      }
-
-    buildSettings.resourcesPaths
-      .filter(p => os.exists(p.path))
-      .map(_.path.wrapped)
-      .foreach(path => javaBuilder.addResources(path)) // TODO: double check this can be called multiple times
-
-    if (os.exists(buildSettings.compiledClasses.path)) {
-      javaBuilder.addClasses(buildSettings.compiledClasses.path.wrapped)
-      setMainClass(buildSettings, javaBuilder, logger)
-    } else {
-      logger.error("No compiled classes found - skipping adding classes and setting main class")
-    }
-
+    javaBuilder.addDependencies(buildSettings.dependencies.map(_.path.wrapped).asJava)
+    javaBuilder.addSnapshotDependencies(buildSettings.snapshotDependencies.map(_.path.wrapped).asJava)
+    buildSettings.resources.map(_.path.wrapped).toSet.foreach(javaBuilder.addResources)
+    javaBuilder.addProjectDependencies(buildSettings.projectDependencies.map(_.path.wrapped).asJava)
+    buildSettings.classes.map(_.path.wrapped).toSet.foreach(javaBuilder.addClasses)
+    javaBuilder.addToClasspath(buildSettings.extraFiles.map(_.path.wrapped).asJava)
     javaBuilder.addJvmFlags(dockerSettings.jvmOptions.asJava)
 
-    javaBuilder
+    setMainClass(buildSettings, javaBuilder, logger)
 
+    javaBuilder
   }
 
   def customizeLayers(
@@ -106,8 +85,10 @@ object MDBuild {
       }
       javaBuilder.setMainClass(buildSettings.mainClass.get)
     } else {
-      val classfiles =
-        os.walk(buildSettings.compiledClasses.path).filter(file => file.toIO.isFile()).map(x => x.wrapped).toList.asJava
+      val classfiles = buildSettings.mainClassSearchPaths
+        .flatMap(pathRef => os.walk(pathRef.path))
+        .collect { case pathRef if pathRef.toIO.isFile => pathRef.wrapped }
+        .asJava
       val mainfound = MainClassFinder.find(classfiles, MDLogging.getEventLogger(logger))
       mainfound.getType() match {
         case MainClassFinder.Result.Type.MAIN_CLASS_FOUND =>

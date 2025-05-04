@@ -110,17 +110,39 @@ trait DockerJibModule extends Module { outer: JavaModule =>
     }
 
     def buildSettings: T[BuildSettings] = T {
+      // The required dependencies for a docker image are contained in `outer.runClasspath()` as they are by definition "All classfiles and
+      // resources from upstream modules and dependencies necessary to run this module's code after compilation".
+
+      // Currently, mill implements those the runClasspath in the following way:
+      // runClasspath = transitiveLocalClasspath ++ localClasspath ++ resolvedRunIvyDeps
+      // transitiveLocalClasspath = moduleDeps.flatMap(_.localClasspath)
+      // localClasspath = localCompileClasspath ++ localRunClasspath
+      // localCompileClasspath = compileResources ++ unmanagedClasspath
+      // localRunClasspath = resources ++ compile().classes
+
+      val (upstreamIvySnapshotDeps, upstreamIvyDeps) = outer
+        .resolvedRunIvyDeps()
+        .filter(pathRef => os.exists(pathRef.path))
+        .toSeq
+        .partition(MDShared.isSnapshotDependency)
+
+      val classesAndResources =
+        (outer.transitiveLocalClasspath() ++ outer.localClasspath()).filter(pathRef => os.exists(pathRef.path)).toSeq
+
       BuildSettings(
         sourceImage = sourceImage(),
         targetImage = targetImage(),
+        dependencies = upstreamIvyDeps,
+        snapshotDependencies = upstreamIvySnapshotDeps,
+        resources = Seq.empty,
+        projectDependencies = Seq.empty,
+        classes = classesAndResources,
+        extraFiles = Seq.empty,
         setAllowInsecureRegistries = false,
         useCurrentTimestamp = true,
-        upstreamAssemblyClasspath = outer.upstreamAssemblyClasspath().toList,
-        resourcesPaths = outer.resources(),
-        compiledClasses = outer.compile().classes,
-        unmanagedDependencies = outer.unmanagedClasspath().toList,
-        mainClass = None,
-        autoDetectMainClass = true,
+        mainClass = outer.mainClass(),
+        mainClassSearchPaths = Seq(outer.compile().classes).filter(pathRef => os.exists(pathRef.path)),
+        autoDetectMainClass = outer.mainClass().isEmpty,
         tags = tags(),
       )
     }
