@@ -68,7 +68,7 @@ trait DockerJibModule extends Module { outer: JavaModule =>
     /** The internal image format to use. This is the format that Jib will use to build the image. The default is
       * Docker.
       */
-    def internalImageFormat: T[md.JibImageFormat] = T {
+    def internalImageFormat: T[md.JibImageFormat] = Task {
       md.JibImageFormat.Docker: JibImageFormat
     }
 
@@ -94,7 +94,7 @@ trait DockerJibModule extends Module { outer: JavaModule =>
       */
     def targetImage: T[md.ImageReference]
 
-    def dockerContainerConfig: T[DockerSettings] = T {
+    def dockerContainerConfig: T[DockerSettings] = Task {
       DockerSettings(
         labels = labels(),
         jvmOptions = jvmOptions(),
@@ -109,19 +109,19 @@ trait DockerJibModule extends Module { outer: JavaModule =>
       )
     }
 
-    def buildSettings: T[BuildSettings] = T {
+    def buildSettings: T[BuildSettings] = Task {
       // The required dependencies for a docker image are contained in `outer.runClasspath()` as they are by definition "All classfiles and
       // resources from upstream modules and dependencies necessary to run this module's code after compilation".
 
       // Currently, mill implements those the runClasspath in the following way:
-      // runClasspath = transitiveLocalClasspath ++ localClasspath ++ resolvedRunIvyDeps
+      // runClasspath = transitiveLocalClasspath ++ localClasspath ++ resolvedRunMvnDeps
       // transitiveLocalClasspath = moduleDeps.flatMap(_.localClasspath)
       // localClasspath = localCompileClasspath ++ localRunClasspath
       // localCompileClasspath = compileResources ++ unmanagedClasspath
       // localRunClasspath = resources ++ compile().classes
 
       val (upstreamIvySnapshotDeps, upstreamIvyDeps) = outer
-        .resolvedRunIvyDeps()
+        .resolvedRunMvnDeps()
         .filter(pathRef => os.exists(pathRef.path))
         .toSeq
         .partition(MDShared.isSnapshotDependency)
@@ -164,7 +164,7 @@ trait DockerJibModule extends Module { outer: JavaModule =>
       *   The return value is used for further processing of the JavaContainerBuilder - so full replacement is possible.
       */
     def getJavaBuilder: Task[JavaContainerBuilder] = Task.Anon {
-      val logger     = T.ctx().log
+      val logger     = Task.ctx().log
       val dockerConf = dockerContainerConfig()
       val buildConf  = buildSettings()
 
@@ -194,8 +194,8 @@ trait DockerJibModule extends Module { outer: JavaModule =>
       jibBuilder
     }
 
-    def buildImage: T[BuildResult] = T {
-      val logger = T.ctx().log
+    def buildImage: T[BuildResult] = Task {
+      val logger = Task.ctx().log
       logger.info("Building image")
       val buildConf = buildSettings()
 
@@ -211,7 +211,7 @@ trait DockerJibModule extends Module { outer: JavaModule =>
           }
           Containerizer.to(image)
         case md.JibImage.TargetTarFile(qualifiedName, filename) =>
-          Containerizer.to(TarImage.at((T.dest / filename).wrapped).named(qualifiedName))
+          Containerizer.to(TarImage.at((Task.dest / filename).wrapped).named(qualifiedName))
       }
 
       val containerizerWithLogs = containerizer.addEventHandler(MDLogging.getLogger(logger))
@@ -231,7 +231,7 @@ trait DockerJibModule extends Module { outer: JavaModule =>
         imageId = container.getImageId.toString(),
         imageDigest = container.getDigest.toString(),
         path = buildConf.targetImage match {
-          case md.JibImage.TargetTarFile(_, filename) => Some(PathRef(T.dest / filename))
+          case md.JibImage.TargetTarFile(_, filename) => Some(PathRef(Task.dest / filename))
           case _                                      => None
         },
       )

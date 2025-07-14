@@ -9,7 +9,7 @@ object CustomJibBuildExample extends TestSuite {
       val resourceFolder = os.Path(sys.env("MILL_TEST_RESOURCE_DIR"))
 
       ExampleTester.run(
-        clientServerMode = true,
+        daemonMode = true,
         workspaceSourcePath = resourceFolder / "examples-customjibbuild",
         millExecutable = os.Path(sys.env("MILL_EXECUTABLE_PATH"))
       )
