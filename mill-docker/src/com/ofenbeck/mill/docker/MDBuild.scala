@@ -33,7 +33,10 @@ object MDBuild {
     javaBuilder.addSnapshotDependencies(buildSettings.snapshotDependencies.map(_.path.wrapped).asJava)
     buildSettings.resources.map(_.path.wrapped).toSet.foreach(javaBuilder.addResources)
     javaBuilder.addProjectDependencies(buildSettings.projectDependencies.map(_.path.wrapped).asJava)
-    buildSettings.classes.map(_.path.wrapped).toSet.foreach(javaBuilder.addClasses)
+
+    buildSettings.classes.filter(p => os.isDir(p.path)).map(_.path.wrapped).toSet.foreach(javaBuilder.addClasses)
+    javaBuilder.addSnapshotDependencies( buildSettings.classes.filter(p => os.isFile(p.path)).map(_.path.wrapped).asJava  )
+
     javaBuilder.addToClasspath(buildSettings.extraFiles.map(_.path.wrapped).asJava)
     javaBuilder.addJvmFlags(dockerSettings.jvmOptions.asJava)
 

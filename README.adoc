@@ -184,5 +184,27 @@ An example modifying the Jib Container Builder link:mill-docker/test/resources/e
 == Future Work
 
 * Jlink support for smaller images 
-* Better support for multi module projects (right now the plugin treats them as upstream dependencies - which is not always what you want)
+* ~~Better support for multi module projects (right now the plugin treats them as upstream dependencies - which is not always what you want)~~
 * Native Image use case investigation
+
+== Change Log
+:sectnums!:
+=== 0.0.3 (Jul 2025)
+* Expose all Jib layers via BuildSettings
+* Improved multi-module classpath handling
+* Inspired runClasspath default from Mill implementation
+
+Contributors: link:https://github.com/jdsalchow[jdsalchow]
+
+=== 0.0.2 (Feb 2025)
+* Update jib-core to 0.27.2 for better cross-platform builds
+* Simplified getJibContainerBuilder and DockerConfig
+* Various grammar and formatting improvements
+
+Contributors: link:https://github.com/nightscape[nightscape], link:https://github.com/sideeffffect[sideeffffect]
+
+=== 0.0.1 (Oct 2024)
+* Initial release
+* Basic Jib integration for Mill
+* Example configurations and documentation
+
