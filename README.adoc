@@ -189,6 +189,13 @@ An example modifying the Jib Container Builder link:mill-docker/test/resources/e
 
 == Change Log
 :sectnums!:
+
+
+=== 0.1.0 (Jul 2025)
+* Moved to Mill 1.0.0
+
+Contributors: link:https://github.com/nightscape[nightscape]
+
 === 0.0.3 (Jul 2025)
 * Expose all Jib layers via BuildSettings
 * Improved multi-module classpath handling

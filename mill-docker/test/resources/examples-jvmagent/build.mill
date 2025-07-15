@@ -1,12 +1,15 @@
+//| mvnDeps:
+//| - com.ofenbeck::mill-docker::0.1.0
+//| - com.google.cloud.tools:jib-core:0.27.2
+
 import java.nio.file.Path
-import $ivy.`com.ofenbeck::mill-docker_mill0.11:0.0.3`
 import mill._
 import mill.scalalib._
 import os._
 import coursier.maven.MavenRepository
+import com.ofenbeck.mill.docker._
 import com.google.cloud.tools.jib.api.JavaContainerBuilder
 import java.nio.file.{Files, Path}
-import com.ofenbeck.mill.docker._
 
 
 /** Usage
@@ -18,7 +21,7 @@ import com.ofenbeck.mill.docker._
 */
 
 object project extends ScalaModule with DockerJibModule {
-  def scalaVersion = "3.3.3"
+  def scalaVersion = "3.7.1"
 
   object docker extends DockerConfig {
 
@@ -28,7 +31,7 @@ object project extends ScalaModule with DockerJibModule {
 
     override def targetImage = JibImage.RegistryImage("ofenbeck/jvmagent:arm", Some(("DOCKER_USERNAME", "DOCKER_PASSWORD")))
 
-    def downloadAzureAgent: T[PathRef] = T {
+    def downloadAzureAgent: Task[PathRef] = Task {
       val azureAgentUrl =
         "https://github.com/microsoft/ApplicationInsights-Java/releases/download/3.6.1/applicationinsights-agent-3.6.1.jar"
       val taskDownloadDir = Task.ctx().dest
@@ -41,19 +44,19 @@ object project extends ScalaModule with DockerJibModule {
       PathRef(taskDownloadDir)
     }
 
-     override def getJavaBuilder: Task[JavaContainerBuilder] = Task {
+     override def getJavaBuilder: Task[JavaContainerBuilder] = Task.Anon {
         Task.ctx().log.info("Added Azure agent to the container")
         val builder = super.getJavaBuilder()
         builder.addResources(downloadAzureAgent().path.wrapped)
         builder
     }
 
-    override def jvmOptions = T {
+    override def jvmOptions = Task {
       Seq("-Xmx1024M", "-javaagent:/applicationinsights-agent-3.6.1.jar")
     }
 
   
-    override def platforms = T {
+    override def platforms = Task {
       Set(Platform("linux", "arm64"))
     }
 
