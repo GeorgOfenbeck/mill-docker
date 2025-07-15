@@ -38,7 +38,7 @@ object project extends ScalaModule with DockerJibModule {
     def downloadAzureAgent: T[PathRef] = T {
       val azureAgentUrl =
         "https://github.com/microsoft/ApplicationInsights-Java/releases/download/3.6.1/applicationinsights-agent-3.6.1.jar"
-      val taskDownloadDir = T.ctx().dest
+      val taskDownloadDir = Task.ctx().dest
       val dest: os.Path = taskDownloadDir / "applicationinsights-agent-3.6.1.jar"
       val in            = new java.net.URL(azureAgentUrl).openStream()
       try
@@ -63,13 +63,13 @@ object project extends ScalaModule with DockerJibModule {
       * Here we are customizing the layers by dropping the dependencies layer and hence fully overload the super method
       * without calling it 
       */
-    override def getJibBuilder: Task[JibContainerBuilder] = Task.Anon {
+    override def getJibBuilder: Task[JibContainerBuilder] = Task {
 
       //this takes the default JavaContainerBuilder
       val javaBuilder = getJavaBuilder()
       val jibBuilder  = javaBuilder.toContainerBuilder()
       val buildConf   = buildSettings()
-      val logger      = T.ctx().log
+      val logger      = Task.ctx().log
 
       val (emptyJibBuilder, jiblayers, entrypoints) = MDBuild.customizeLayers(jibBuilder, buildConf, logger)
       

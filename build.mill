@@ -1,64 +1,24 @@
-import mill.scalalib.publish.Scope.Test
-import $ivy.`com.goyeau::mill-git::0.2.5`
-
-import com.goyeau.mill.git.GitVersionedPublishModule
-import $ivy.`com.lihaoyi::mill-contrib-sonatypecentral:`
-import mill.contrib.sonatypecentral.SonatypeCentralPublishModule
-
-import mill._
-import mill.scalalib._
-import mill.scalalib.scalafmt._
-import mill.scalalib.publish._
-import mill.scalalib.api.ZincWorkerUtil._
-import mill.scalalib.publish.{Developer, License, PomSettings, VersionControl}
-import mill.main.BuildInfo.millVersion
-
+package build
 import mill._, scalalib._, publish._
 
 object versions {
-  val millVersions = Seq("0.12.0", "0.12.1", "0.12.2")
+  val millVersions = Seq("1.0.0")
   val jibCore      = "0.27.2"
 }
 
-object `mill-docker` extends Cross[MillDockerCross](versions.millVersions) {}
-trait MillDockerCross
-    extends CrossModuleBase
-    with ScalaModule
-    with PublishModule
-    with SonatypeCentralPublishModule
-    with Cross.Module[String] {
+object `mill-docker` extends ScalaModule with PublishModule with SonatypeCentralPublishModule {
 
-  override def sonatypeCentralGpgArgs: T[String] =
-    Seq(
-      "--passphrase=$MILL_PGP_PASSPHRASE",
-      "--no-tty",
-      "--pinentry-mode",
-      "loopback",
-      "--batch",
-      "--yes",
-      "-a",
-      "-b",
-    ).mkString(",")
-
-  override def sonatypeCentralShouldRelease: T[Boolean] = Task(false)
-
-  def millVersion                = crossValue
-  override def crossScalaVersion = "2.13.15"
-
-  /*
-object `mill-docker` extends ScalaModule with PublishModule {
   def millVersion = versions.millVersions.head
-   */
-  def scalaVersion: T[String] = "2.13.15"
+  def scalaVersion: T[String] = "3.7.1"
 
   // Set the `platformSuffix` so the name indicates what Mill version it is compiled for
-  def platformSuffix = "_mill" + mill.main.BuildInfo.millBinPlatform
+  def platformSuffix = "_mill1.0.0"
 
   override def publishVersion: T[String] = "0.0.3"
 
-  override def ivyDeps = super.ivyDeps() ++ Agg(
-    ivy"com.lihaoyi:mill-dist:$millVersion",
-    ivy"com.google.cloud.tools:jib-core:${versions.jibCore}",
+  override def mvnDeps = super.mvnDeps() ++ Seq(
+    mvn"com.lihaoyi::mill-libs-scalalib:$millVersion",
+    mvn"com.google.cloud.tools:jib-core:${versions.jibCore}",
   )
 
   def pomSettings = PomSettings(
@@ -72,25 +32,23 @@ object `mill-docker` extends ScalaModule with PublishModule {
 
   // Testing Config, with necessary setup for unit/integration/example tests
   object test extends ScalaTests with TestModule.Utest {
-    def ivyDeps = Agg(
-      ivy"com.lihaoyi::mill-testkit:$millVersion",
-      // ivy"com.google.cloud.tools:jib-core:${versions.jibCore}",  // hm - why is this not working?
+    def mvnDeps = Seq(
+      mvn"com.lihaoyi::mill-testkit:$millVersion",
     )
-    def forkEnv = Map("MILL_EXECUTABLE_PATH" -> millExecutable.assembly().path.toString)
+    
+    def forkEnv = Map(
+      "MILL_EXECUTABLE_PATH" -> millExecutable.assembly().path.toString,
+      s"MILL_LOCAL_TEST_OVERRIDE_com.ofenbeck-mill-docker_mill1.0.0" -> `mill-docker`.localClasspath().map(_.path).mkString(",")
+    )
 
     // Create a Mill executable configured for testing our plugin
-    object millExecutable extends JavaModule {
-      def ivyDeps = Agg(
-        ivy"com.lihaoyi:mill-dist:$millVersion",
-        ivy"com.google.cloud.tools:jib-core:${versions.jibCore}",
+    object millExecutable extends ScalaModule {
+      def scalaVersion = `mill-docker`.scalaVersion
+      def mvnDeps = Seq(
+        mvn"com.lihaoyi::mill-libs-scalalib:$millVersion",
+        mvn"com.google.cloud.tools:jib-core:${versions.jibCore}",
       )
       def mainClass = Some("mill.runner.client.MillClientMain")
-      def resources = Task {
-        val p = Task.dest / "mill/local-test-overrides" / s"com.ofenbeck-${`mill-docker`().artifactId()}"
-        os.write(p, `mill-docker`().localClasspath().map(_.path).mkString("\n"), createFolders = true)
-        Seq(PathRef(Task.dest))
-      }
     }
   }
-
 }

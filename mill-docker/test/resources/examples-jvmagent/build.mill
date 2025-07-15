@@ -31,7 +31,7 @@ object project extends ScalaModule with DockerJibModule {
     def downloadAzureAgent: T[PathRef] = T {
       val azureAgentUrl =
         "https://github.com/microsoft/ApplicationInsights-Java/releases/download/3.6.1/applicationinsights-agent-3.6.1.jar"
-      val taskDownloadDir = T.ctx().dest
+      val taskDownloadDir = Task.ctx().dest
       val dest: os.Path = taskDownloadDir / "applicationinsights-agent-3.6.1.jar"
       val in            = new java.net.URL(azureAgentUrl).openStream()
       try
@@ -41,8 +41,8 @@ object project extends ScalaModule with DockerJibModule {
       PathRef(taskDownloadDir)
     }
 
-     override def getJavaBuilder: Task[JavaContainerBuilder] = Task.Anon {
-        T.ctx().log.info("Added Azure agent to the container")
+     override def getJavaBuilder: Task[JavaContainerBuilder] = Task {
+        Task.ctx().log.info("Added Azure agent to the container")
         val builder = super.getJavaBuilder()
         builder.addResources(downloadAzureAgent().path.wrapped)
         builder

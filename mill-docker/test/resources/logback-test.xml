@@ -1,0 +1,4 @@
+<configuration>
+  <logger name="org.apache.http.wire" level="WARN"/>
+  <root level="INFO"/>
+</configuration>
