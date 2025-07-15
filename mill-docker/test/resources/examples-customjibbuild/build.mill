@@ -1,4 +1,6 @@
-import $ivy.`com.ofenbeck::mill-docker_mill0.11:0.0.3`
+//| mvnDeps:
+//| - com.ofenbeck::mill-docker::0.1.0
+//| - com.google.cloud.tools:jib-core:0.27.2
 import java.nio.file.Path
 import mill._
 import mill.scalalib._
@@ -24,7 +26,7 @@ import com.ofenbeck.mill.docker._
 
 
 object project extends ScalaModule with DockerJibModule {
-  def scalaVersion = "3.3.3"
+  def scalaVersion = "3.7.1"
 
   object docker extends DockerConfig {
 
@@ -35,7 +37,7 @@ object project extends ScalaModule with DockerJibModule {
     override def targetImage =
       JibImage.DockerDaemonImage("ofenbeck/customjibbuild:local")
 
-    def downloadAzureAgent: T[PathRef] = T {
+    def downloadAzureAgent: Task[PathRef] = Task {
       val azureAgentUrl =
         "https://github.com/microsoft/ApplicationInsights-Java/releases/download/3.6.1/applicationinsights-agent-3.6.1.jar"
       val taskDownloadDir = Task.ctx().dest
@@ -55,7 +57,7 @@ object project extends ScalaModule with DockerJibModule {
       * @return
       *   The return value is used for further processing of the JibContainerBuilder - so full replacement is possible.
       */
-    override def getJibBuilder: Task[JibContainerBuilder] = Task {
+    override def getJibBuilder: Task[JibContainerBuilder] = Task.Anon {
       //this takes the default JavaContainerBuilder
       val emptyJibBuilder = super.getJibBuilder()
 

@@ -1,5 +1,7 @@
+//| mvnDeps:
+//| - com.ofenbeck::mill-docker::0.1.0
+//| - com.google.cloud.tools:jib-core:0.27.2
 import java.nio.file.Path
-import $ivy.`com.ofenbeck::mill-docker_mill0.11:0.0.3`
 import mill._
 import mill.scalalib._
 import os._
@@ -17,39 +19,34 @@ import com.ofenbeck.mill.docker._
 */
 
 object project extends ScalaModule with DockerJibModule {
-  def scalaVersion = "3.3.3"
+  def scalaVersion = "3.7.1"
 
-  val sonatypeReleases = Seq(
-    MavenRepository("https://oss.sonatype.org/content/repositories/snapshots"),
-  )
-
-  def repositoriesTask = T.task {
-    super.repositoriesTask() ++ sonatypeReleases
-  }
-
-  override def resources: T[Seq[PathRef]] = T.sources {
+  def repositories = Seq("https://oss.sonatype.org/content/repositories/snapshots")
+  /*
+  override def resources = Task {
     Seq(
       millSourcePath / "resources",
       millSourcePath / "additional" / "resources",
     ).map(PathRef(_))
-  }
+  }*/
 
-  override def ivyDeps = super.ivyDeps() ++ Agg(
-    ivy"com.lihaoyi::scalatags:0.13.1",
-    ivy"com.lihaoyi::os-lib:0.11.2",
-    ivy"org.scrupal:chill-java:0.7.0-SNAPSHOT", // random snapshot dependency
+  override def mvnDeps = super.mvnDeps() ++ Seq(
+    mvn"com.lihaoyi::scalatags:0.13.1",
+    mvn"com.lihaoyi::os-lib:0.11.2",
+    mvn"org.scrupal:chill-java:0.7.0-SNAPSHOT", // random snapshot dependency
   )
 
-  override def compileIvyDeps = Agg(
-    ivy"com.softwaremill.macwire::macros:2.6.4",
+  override def compileMvnDeps = Seq(
+    mvn"com.softwaremill.macwire::macros:2.6.4",
   )
 
-  override def unmanagedClasspath = T {
-    super.unmanagedClasspath() ++
-      Agg.from(os.list(millSourcePath / "unmanaged")).map(PathRef(_))
-
+  def lib = Task.Source("unmanaged")
+  override def unmanagedClasspath = Task {
+    if (!os.exists(lib().path)) Seq()
+    else Seq.from(os.list(lib().path).map(PathRef(_)))
   }
-
+  
+  
   object docker extends DockerConfig {
 
     import com.ofenbeck.mill.docker._
@@ -58,41 +55,41 @@ object project extends ScalaModule with DockerJibModule {
 
     override def targetImage = JibImage.RegistryImage("ofenbeck/javabuildsettings:arm", Some(("DOCKER_USERNAME", "DOCKER_PASSWORD")))
 
-    override def labels = T {
+    override def labels = Task {
       Map(
         "com.ofenbeck.mill.docker"         -> "javaBuildSettings",
         "com.ofenbeck.mill.docker.version" -> "0.0.5",
       )
     }
 
-    override def jvmOptions = T {
+    override def jvmOptions = Task {
       Seq("-Xmx1024M", "-agentlib:jdwp=transport=dt_socket,server=y,address=8000")
     }
 
-    override def exposedPorts = T {
+    override def exposedPorts = Task {
       Seq(8080, 8081)
     }
 
-    override def exposedUdpPorts = T {
+    override def exposedUdpPorts = Task {
       Seq(8082, 8083)
     }
 
-    override def envVars = T {
+    override def envVars = Task {
       Map(
         "JAVA_OPTS"             -> "-Xmx1024M",
         "JAVA_TOOL_OPTIONS_XXX" -> "-agentlib:jdwp=transport=dt_socket,server=y,address=8000",
       )
     }
 
-    override def user = T {
+    override def user = Task {
       Some("1000")
     }
 
-    override def platforms = T {
+    override def platforms = Task {
       Set(Platform("linux", "arm64"))
     }
 
-    override def entrypoint = T {
+    override def entrypoint = Task {
       Seq(
         "sh",
         "-c",

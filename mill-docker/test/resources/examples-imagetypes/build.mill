@@ -1,4 +1,6 @@
-import $ivy.`com.ofenbeck::mill-docker_mill0.11:0.0.3`
+//| mvnDeps:
+//| - com.ofenbeck::mill-dpocker::0.1.0
+//| - com.google.cloud.tools:jib-core:0.27.2
 import mill._
 import mill.scalalib._
 
@@ -12,7 +14,7 @@ import com.ofenbeck.mill.docker._
 /** From a registry to your local (hopefully running) docker daemon
   */
 object registry2demon extends ScalaModule with DockerJibModule {
-  def scalaVersion = "3.3.3"
+  def scalaVersion = "3.7.1"
 
   object docker extends DockerConfig {
     def sourceImage = JibImage.RegistryImage("gcr.io/distroless/java:latest")
